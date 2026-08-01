@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+body { @apply bg-cream text-espresso font-sans; }
+h1, h2, h3, .font-display { font-family: 'Playfair Display', serif; }
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 bg-espresso text-cream px-6 py-3 rounded-full font-medium tracking-wide transition-all hover:bg-gold hover:text-night shadow-soft;
+}
+.btn-outline {
+  @apply inline-flex items-center justify-center gap-2 border border-espresso text-espresso px-6 py-3 rounded-full font-medium tracking-wide transition-all hover:bg-espresso hover:text-cream;
+}
+.container-x { @apply max-w-7xl mx-auto px-5 md:px-8; }
