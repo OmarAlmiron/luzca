@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import prisma from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createPreference, getPayment } from '../utils/mercadopago.js';
@@ -37,9 +38,37 @@ router.post('/create-preference/:orderId', requireAuth, async (req, res, next) =
   }
 });
 
+// Valida que la notificación realmente venga de Mercado Pago (firma HMAC-SHA256)
+// Documentación: https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/additional-content/notifications/webhooks
+function isValidSignature(req) {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) return true; // Si todavía no cargaste la clave, no bloqueamos (modo desarrollo)
+
+  const xSignature = req.headers['x-signature'];
+  const xRequestId = req.headers['x-request-id'];
+  const dataId = req.query['data.id'];
+  if (!xSignature || !xRequestId || !dataId) return false;
+
+  const parts = Object.fromEntries(
+    xSignature.split(',').map((p) => p.trim().split('=').map((s) => s.trim())),
+  );
+  const { ts, v1 } = parts;
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+
+  return expected === v1;
+}
+
 // Webhook de Mercado Pago: confirma pagos automáticamente
 router.post('/webhook', async (req, res) => {
   try {
+    if (!isValidSignature(req)) {
+      console.warn('Webhook MP: firma inválida, se ignora la notificación');
+      return res.sendStatus(200);
+    }
+
     const paymentId = req.query['data.id'] || req.body?.data?.id;
     if (!paymentId) return res.sendStatus(200);
 
