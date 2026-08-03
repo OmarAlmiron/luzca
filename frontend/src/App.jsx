@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import ComingSoon from './pages/ComingSoon';
 
 import Home from './pages/Home';
 import Catalog from './pages/Catalog';
@@ -16,7 +18,34 @@ import Contact from './pages/Contact';
 import About from './pages/About';
 import NotFound from './pages/NotFound';
 
+// Modo "en construccion": se activa con la variable de entorno VITE_MAINTENANCE_MODE=true.
+// Para seguir probando el sitio vos mismo mientras esta activado, entra una vez a
+// https://tu-dominio/?preview=CLAVE (usando el valor de VITE_PREVIEW_KEY) y va a quedar
+// habilitado en ese navegador hasta que lo borres del localStorage.
+function useMaintenanceBypass() {
+  const [allowed, setAllowed] = useState(() => localStorage.getItem('luzca_preview') === 'true');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get('preview');
+    const expected = import.meta.env.VITE_PREVIEW_KEY;
+    if (key && expected && key === expected) {
+      localStorage.setItem('luzca_preview', 'true');
+      setAllowed(true);
+    }
+  }, []);
+
+  return allowed;
+}
+
 export default function App() {
+  const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === 'true';
+  const bypassed = useMaintenanceBypass();
+
+  if (maintenanceMode && !bypassed) {
+    return <ComingSoon />;
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Toaster position="top-center" />
