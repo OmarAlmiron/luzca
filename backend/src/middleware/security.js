@@ -36,8 +36,21 @@ export const authLimiter = rateLimit({
   message: { error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' },
 });
 
+// CLIENT_URL admite varios orígenes separados por coma, ej:
+// CLIENT_URL=https://luzca.com.ar,https://www.luzca.com.ar,https://luzca.vercel.app
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim());
+
 export const corsMiddleware = cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin(origin, callback) {
+    // Permite pedidos sin origin (ej. Postman, apps móviles) y los orígenes autorizados
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('No autorizado por CORS'));
+    }
+  },
   credentials: true,
 });
 
