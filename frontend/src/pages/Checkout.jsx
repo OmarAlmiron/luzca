@@ -28,7 +28,7 @@ export default function Checkout() {
       const { data: pref } = await api.post(`/payments/create-preference/${order.id}`);
       clearCart();
       // Redirige a Mercado Pago (sandbox o producción según las credenciales configuradas)
-      window.location.href = pref.sandboxInitPoint || pref.initPoint;
+      window.location.href = pref.initPoint;
     } catch (err) {
       toast.error(err.response?.data?.error || 'No pudimos procesar el pago. Probá de nuevo.');
     } finally {
