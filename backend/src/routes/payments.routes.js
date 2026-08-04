@@ -22,13 +22,17 @@ router.post('/create-preference/:orderId', requireAuth, async (req, res, next) =
       price: it.price,
     }));
 
+    // CLIENT_URL puede tener varios dominios separados por coma (para CORS);
+    // para las URLs de retorno de Mercado Pago usamos siempre el primero (el dominio principal).
+    const primaryUrl = (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim();
+
     const pref = await createPreference({
       order,
       items,
       backUrls: {
-        success: `${process.env.CLIENT_URL}/checkout/exito`,
-        failure: `${process.env.CLIENT_URL}/checkout/error`,
-        pending: `${process.env.CLIENT_URL}/checkout/pendiente`,
+        success: `${primaryUrl}/checkout/exito`,
+        failure: `${primaryUrl}/checkout/error`,
+        pending: `${primaryUrl}/checkout/pendiente`,
       },
     });
 
