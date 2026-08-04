@@ -16,7 +16,7 @@ export async function createPreference({ order, items, backUrls }) {
     external_reference: order.id,
     back_urls: backUrls,
     auto_return: 'approved',
-    notification_url: `${process.env.SERVER_URL || 'http://localhost:4000'}/api/payments/webhook`,
+    notification_url: `${process.env.API_URL || 'http://localhost:4000'}/api/payments/webhook`,
   };
   return preference.create({ body });
 }
