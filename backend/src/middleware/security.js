@@ -1,4 +1,5 @@
 import helmet from 'helmet';
+import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import hpp from 'hpp';
 import xss from 'xss-clean';
@@ -35,22 +36,14 @@ export const authLimiter = rateLimit({
   message: { error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' },
 });
 
-// CORS middleware personalizado que explícitamente establece headers
-export const corsMiddleware = (req, res, next) => {
-  // SIEMPRE permitir CORS desde cualquier origen
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-  res.header('Access-Control-Max-Age', '86400');
-  res.header('X-CORS-Middleware', 'active');
-
-  // Maneja preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-
-  next();
-};
+// CORS middleware usando librería cors
+export const corsMiddleware = cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  maxAge: 86400,
+  credentials: false,
+});
 
 export const hppMiddleware = hpp();
 export const xssMiddleware = xss();
