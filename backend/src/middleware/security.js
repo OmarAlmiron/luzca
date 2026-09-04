@@ -2,7 +2,6 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import hpp from 'hpp';
 import xss from 'xss-clean';
-import cors from 'cors';
 
 // Cabeceras de seguridad HTTP (CSP, HSTS, no-sniff, etc.)
 export const helmetMiddleware = helmet({
@@ -42,17 +41,26 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map((o) => o.trim());
 
-export const corsMiddleware = cors({
-  origin(origin, callback) {
-    // Permite pedidos sin origin (ej. Postman, apps móviles) y los orígenes autorizados
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('No autorizado por CORS'));
-    }
-  },
-  credentials: true,
-});
+// CORS middleware personalizado que explícitamente establece headers
+export const corsMiddleware = (req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Permite pedidos sin origin (ej. Postman, apps móviles) y los orígenes autorizados
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+  }
+  
+  // Maneja preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+};
 
 export const hppMiddleware = hpp();
 export const xssMiddleware = xss();
