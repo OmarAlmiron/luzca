@@ -35,19 +35,14 @@ export const authLimiter = rateLimit({
   message: { error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' },
 });
 
-// CLIENT_URL admite varios orígenes separados por coma, ej:
-// CLIENT_URL=https://luzca.com.ar,https://www.luzca.com.ar,https://luzca.vercel.app
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
-  .split(',')
-  .map((o) => o.trim());
-
 // CORS middleware personalizado que explícitamente establece headers
 export const corsMiddleware = (req, res, next) => {
   // SIEMPRE permitir CORS desde cualquier origen
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-  res.setHeader('Access-Control-Max-Age', '86400');
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  res.header('Access-Control-Max-Age', '86400');
+  res.header('X-CORS-Middleware', 'active');
 
   // Maneja preflight requests
   if (req.method === 'OPTIONS') {
@@ -56,8 +51,6 @@ export const corsMiddleware = (req, res, next) => {
 
   next();
 };
-  
-
 
 export const hppMiddleware = hpp();
 export const xssMiddleware = xss();
