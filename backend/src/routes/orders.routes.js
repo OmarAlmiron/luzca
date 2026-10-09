@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
-import { sendMail, orderConfirmationTemplate } from '../utils/email.js';
 
 const router = Router();
 
@@ -54,12 +53,7 @@ router.post('/', requireAuth, async (req, res, next) => {
       include: { items: { include: { product: true } } },
     });
 
-    sendMail({
-      to: req.user.email,
-      subject: `Confirmación de pedido #${order.id}`,
-      html: orderConfirmationTemplate(order, req.user),
-    }).catch((e) => console.error('Error enviando email:', e.message));
-
+    // El mail de confirmación se manda recién cuando Mercado Pago aprueba el pago (webhook)
     res.status(201).json(order);
   } catch (err) {
     if (err.name === 'ZodError') return res.status(400).json({ error: err.errors[0].message });

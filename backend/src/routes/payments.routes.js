@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import prisma from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createPreference, getPayment } from '../utils/mercadopago.js';
-import { sendMail, orderConfirmationTemplate } from '../utils/email.js';
+import { sendMail, orderConfirmationTemplate, newSaleTemplate } from '../utils/email.js';
 
 const router = Router();
 
@@ -80,18 +80,49 @@ router.post('/webhook', async (req, res) => {
     const orderId = payment.external_reference;
     if (!orderId) return res.sendStatus(200);
 
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) return res.sendStatus(200);
+
+    const CANCEL_STATUSES = ['refunded', 'cancelled', 'charged_back'];
+
     if (payment.status === 'approved') {
-      const order = await prisma.order.update({
-        where: { id: orderId },
+      // MP manda varias notificaciones por el mismo pago: solo procesamos la primera
+      // (updateMany con condición = idempotente, evita mails duplicados)
+      const { count } = await prisma.order.updateMany({
+        where: { id: orderId, status: 'pending' },
         data: { status: 'paid', paymentId: String(paymentId) },
-        include: { user: true },
       });
-      sendMail({
-        to: order.user.email,
-        subject: `Pago aprobado — Pedido #${order.id}`,
-        html: orderConfirmationTemplate(order, order.user),
-      }).catch((e) => console.error(e.message));
+      if (count === 1) {
+        const paid = await prisma.order.findUnique({
+          where: { id: orderId },
+          include: { user: true, items: { include: { product: true } } },
+        });
+        console.log(`[MP] Pedido ${orderId} pagado (pago ${paymentId})`);
+
+        sendMail({
+          to: paid.user.email,
+          subject: `Pago aprobado — Pedido #${paid.id}`,
+          html: orderConfirmationTemplate(paid, paid.user),
+        }).catch((e) => console.error('Error mail comprador:', e.message));
+
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL;
+        if (adminEmail) {
+          sendMail({
+            to: adminEmail,
+            subject: `Nueva venta $${paid.total.toLocaleString('es-AR')} — Pedido #${paid.id}`,
+            html: newSaleTemplate(paid),
+          }).catch((e) => console.error('Error mail vendedor:', e.message));
+        }
+      }
+    } else if (CANCEL_STATUSES.includes(payment.status)) {
+      // Devolución, cancelación o contracargo => el pedido se cancela
+      await prisma.order.updateMany({
+        where: { id: orderId, status: { in: ['pending', 'paid'] } },
+        data: { status: 'cancelled', paymentId: String(paymentId) },
+      });
+      console.log(`[MP] Pedido ${orderId} cancelado (pago ${paymentId}: ${payment.status})`);
     }
+    // 'rejected' / 'in_process': el pedido queda 'pending' para que el cliente pueda reintentar
     res.sendStatus(200);
   } catch (err) {
     console.error('Webhook MP error:', err.message);
