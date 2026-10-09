@@ -43,7 +43,7 @@ router.post('/', requireAuth, async (req, res, next) => {
     });
 
     // El envío SIEMPRE se recalcula en el servidor; el front solo elige la opción
-    const { options } = await getShippingOptions({ province: data.address.province, zip: data.address.zip, items: cart });
+    const { options } = await getShippingOptions({ province: data.address.province, zip: data.address.zip, city: data.address.city, items: cart });
     const option = options.find((o) => o.id === data.shippingOptionId) || options[0];
     const shippingCost = option.cost;
     const total = subtotal + shippingCost;
@@ -60,6 +60,8 @@ router.post('/', requireAuth, async (req, res, next) => {
       service: option.service,
       deliveryType: option.deliveryType,
       zone: option.zoneLabel,
+      provider: option.provider || 'zonas',
+      zipnova: option.zipnova || null,
       eta: option.eta,
     };
 

@@ -4,6 +4,7 @@ import prisma from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createPreference, getPayment } from '../utils/mercadopago.js';
 import { sendMail, orderConfirmationTemplate, newSaleTemplate } from '../utils/email.js';
+import { autoCreateShipment } from '../utils/fulfillment.js';
 
 const router = Router();
 
@@ -108,6 +109,7 @@ router.post('/webhook', async (req, res) => {
           include: { user: true, items: { include: { product: true } } },
         });
         console.log(`[MP] Pedido ${orderId} pagado (pago ${paymentId})`);
+        autoCreateShipment(orderId);
 
         sendMail({
           to: paid.user.email,

@@ -40,7 +40,22 @@ function OrderRow({ o, onSaved }) {
     status: o.status, carrier: o.carrier || '', trackingCode: o.trackingCode || '', trackingUrl: o.trackingUrl || '', adminNotes: o.adminNotes || '', notify: true,
   });
   const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
   const d = o.shippingData || {};
+
+  async function createShipment() {
+    setCreating(true);
+    try {
+      const { data } = await api.post(`/admin/orders/${o.id}/create-shipment`);
+      toast.success(`Envío creado: ${data.carrier} ${data.trackingCode}`);
+      setF((prev) => ({ ...prev, carrier: data.carrier || prev.carrier, trackingCode: data.trackingCode || '', trackingUrl: data.trackingUrl || '' }));
+      onSaved({ ...o, ...data, shipmentError: null });
+    } catch (err) {
+      toast.error(errMsg(err));
+    } finally {
+      setCreating(false);
+    }
+  }
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
   async function save() {
@@ -78,6 +93,15 @@ function OrderRow({ o, onSaved }) {
             {o.items.map((it) => <p key={it.id}>{it.product?.name} x{it.quantity} — {money(it.price * it.quantity)}</p>)}
             <p>Envío: {o.shippingCost ? money(o.shippingCost) : 'Gratis'} · <strong>Total {money(o.total)}</strong></p>
             <p className="text-espresso/50">Pago MP: {o.paymentId || '-'}</p>
+            <p className="font-medium mt-3 mb-1">Envío elegido</p>
+            <p>{d.service || 'Envío a domicilio'} · {d.carrier || '-'} {d.eta ? `· ${d.eta}` : ''}</p>
+            {o.externalShipmentId && <p className="text-green-700">Envío creado en Zipnova (#{o.externalShipmentId})</p>}
+            {o.shipmentError && <p className="text-red-700">Error al crear el envío: {o.shipmentError}</p>}
+            {d.provider === 'zipnova' && !o.externalShipmentId && ['paid', 'shipped'].includes(o.status) && (
+              <button disabled={creating} onClick={createShipment} className="btn-outline mt-2 disabled:opacity-50">
+                {creating ? 'Creando...' : 'Crear envío en Zipnova'}
+              </button>
+            )}
           </div>
           <div className="space-y-3">
             <label className="block">Estado

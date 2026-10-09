@@ -56,6 +56,7 @@ export default function Checkout() {
       api.post('/shipping/quote', {
         province: address.province,
         zip: address.zip.trim(),
+        city: address.city.trim() || undefined,
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
       })
         .then((r) => {
@@ -66,7 +67,7 @@ export default function Checkout() {
         .catch((err) => { setQuote(null); setQuoteError(err.response?.data?.error || 'No pudimos cotizar el envío'); });
     }, 400);
     return () => clearTimeout(t);
-  }, [address.province, address.zip, cartKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [address.province, address.zip, address.city, cartKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selected = quote?.options.find((o) => o.id === optionId) || null;
 

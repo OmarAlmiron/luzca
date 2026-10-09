@@ -96,6 +96,8 @@ model Order {
   trackingCode  String?
   carrier       String?
   trackingUrl   String?
+  externalShipmentId String?  // id del envío en Zipnova (u otro proveedor)
+  shipmentError String?      // último error al crear el envío automático
   shippedAt     DateTime?
   adminNotes    String?
   createdAt     DateTime    @default(now())

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../config/db.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { sendMail, shippingUpdateTemplate, orderDeliveredTemplate } from '../utils/email.js';
+import { createShipmentForOrder } from '../utils/fulfillment.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -99,6 +100,17 @@ router.patch('/orders/:id', async (req, res, next) => {
   } catch (err) {
     if (err.name === 'ZodError') return res.status(400).json({ error: err.errors[0].message });
     next(err);
+  }
+});
+
+// Crear (o reintentar) el envío en Zipnova para un pedido pagado
+router.post('/orders/:id/create-shipment', async (req, res, next) => {
+  try {
+    const o = await createShipmentForOrder(req.params.id);
+    res.json({ ok: true, carrier: o.carrier, trackingCode: o.trackingCode, trackingUrl: o.trackingUrl, externalShipmentId: o.externalShipmentId });
+  } catch (err) {
+    if (err.status && err.status < 500) return res.status(err.status === 401 || err.status === 403 ? 502 : err.status).json({ error: err.message });
+    res.status(502).json({ error: err.message });
   }
 });
 

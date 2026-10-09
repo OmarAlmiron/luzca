@@ -20,6 +20,7 @@ export async function loadCartItems(items) {
 const quoteSchema = z.object({
   province: z.string(),
   zip: z.string(),
+  city: z.string().max(80).optional(),
   items: z.array(z.object({ productId: z.string(), quantity: z.number().int().positive() })).min(1),
 });
 
@@ -27,7 +28,7 @@ router.post('/quote', async (req, res, next) => {
   try {
     const data = quoteSchema.parse(req.body);
     const items = await loadCartItems(data.items);
-    const { options, freeFrom, free } = await getShippingOptions({ province: data.province, zip: data.zip, items });
+    const { options, freeFrom, free } = await getShippingOptions({ province: data.province, zip: data.zip, city: data.city, items });
     res.json({ options, freeFrom, free });
   } catch (err) {
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Datos de envío inválidos' });

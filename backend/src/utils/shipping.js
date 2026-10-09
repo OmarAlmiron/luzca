@@ -21,6 +21,8 @@ export const PROVINCE_CODES = {
   'Tierra del Fuego': 'V', 'Tucumán': 'T',
 };
 
+import { zipnovaProvider } from './zipnova.js';
+
 export const FREE_SHIPPING_FROM = Number(process.env.FREE_SHIPPING_FROM || 80000);
 export const ORIGIN_ZIP = process.env.SHIPPING_ORIGIN_ZIP || '1414';
 
@@ -80,11 +82,11 @@ function zonesProvider({ province, zip, pkg }) {
 
 const PROVIDERS = {
   zonas: zonesProvider,
-  // zipnova: zipnovaProvider,   // se agrega al tener las credenciales
+  zipnova: zipnovaProvider,
 };
 
 // Devuelve las opciones de envío ordenadas de menor a mayor precio
-export async function getShippingOptions({ province, zip, items }) {
+export async function getShippingOptions({ province, zip, city, items }) {
   if (!PROVINCES.includes(province)) throw Object.assign(new Error('Elegí una provincia válida'), { status: 400 });
   const cp = normalizeZip(zip);
   if (!cp) throw Object.assign(new Error('Código postal inválido (ej: 1043 o C1043AAB)'), { status: 400 });
@@ -97,7 +99,7 @@ export async function getShippingOptions({ province, zip, items }) {
 
   let options;
   try {
-    options = await provider({ province, provinceCode: PROVINCE_CODES[province], zip: cp, pkg });
+    options = await provider({ province, provinceCode: PROVINCE_CODES[province], zip: cp, city, pkg, items });
     if (!options?.length) throw new Error('sin opciones');
   } catch (err) {
     if (provider !== zonesProvider) console.error(`[envios] ${providerName} falló, uso tabla de zonas:`, err.message);
