@@ -4,6 +4,8 @@ import prisma from '../config/db.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { sendMail, shippingUpdateTemplate, orderDeliveredTemplate } from '../utils/email.js';
 import { createShipmentForOrder } from '../utils/fulfillment.js';
+import { zipnovaEnabled, zipnovaProvider } from '../utils/zipnova.js';
+import { buildPackage } from '../utils/shipping.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -100,6 +102,29 @@ router.patch('/orders/:id', async (req, res, next) => {
   } catch (err) {
     if (err.name === 'ZodError') return res.status(400).json({ error: err.errors[0].message });
     next(err);
+  }
+});
+
+// Diagnóstico de envíos: muestra la configuración y prueba una cotización directa con Zipnova
+router.get('/shipping-check', async (req, res) => {
+  const config = {
+    provider: process.env.SHIPPING_PROVIDER || 'zonas',
+    zipnovaCredentials: zipnovaEnabled(),
+    accountId: process.env.ZIPNOVA_ACCOUNT_ID ? 'cargado' : 'FALTA',
+    originId: process.env.ZIPNOVA_ORIGIN_ID ? 'cargado' : 'no (usa el origen por defecto)',
+    autoCreate: process.env.ZIPNOVA_AUTO_CREATE === 'true',
+  };
+  if (!zipnovaEnabled()) return res.json({ config, test: 'sin credenciales de Zipnova' });
+  try {
+    const product = await prisma.product.findFirst({ where: { active: true } });
+    const items = [{ quantity: 1, product }];
+    const options = await zipnovaProvider({
+      province: req.query.province || 'Córdoba', zip: req.query.zip || '5000', city: req.query.city || 'Córdoba',
+      pkg: buildPackage(items), items,
+    });
+    res.json({ config, test: 'OK', options });
+  } catch (err) {
+    res.json({ config, test: 'ERROR', error: err.message, details: err.data || null });
   }
 });
 
