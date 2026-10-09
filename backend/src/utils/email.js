@@ -47,31 +47,71 @@ export async function sendMail({ to, subject, html }) {
   return info;
 }
 
-// Aviso al dueño de la tienda cada vez que entra una venta pagada
-export function newSaleTemplate(order) {
-  const items = (order.items || [])
-    .map((it) => `<li>${it.product?.name || it.productId} x${it.quantity} — $${(it.price * it.quantity).toLocaleString('es-AR')}</li>`)
-    .join('');
+const money = (n) => `$${Number(n || 0).toLocaleString('es-AR')}`;
+const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function itemsTable(order) {
+  const rows = (order.items || []).map((it) => `
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #eee">${esc(it.product?.name || it.productId)}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center">${it.quantity}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right">${money(it.price * it.quantity)}</td>
+      </tr>`).join('');
   return `
-  <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-    <h2 style="color:#8a5a2b">Nueva venta 🎉 — $${order.total.toLocaleString('es-AR')}</h2>
-    <p><strong>Pedido:</strong> #${order.id}</p>
-    <p><strong>Cliente:</strong> ${order.user?.name || ''} (${order.user?.email || ''})</p>
-    <p><strong>Envío a:</strong> ${order.shippingAddr}</p>
-    <ul>${items}</ul>
-    <p><strong>Pago MP:</strong> ${order.paymentId || '-'}</p>
-  </div>`;
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <tr style="color:#888;text-align:left"><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Importe</th></tr>
+      ${rows}
+      <tr><td colspan="2" style="padding-top:10px">Subtotal</td><td style="padding-top:10px;text-align:right">${money(order.subtotal)}</td></tr>
+      <tr><td colspan="2">Envío</td><td style="text-align:right">${order.shippingCost ? money(order.shippingCost) : 'Gratis'}</td></tr>
+      <tr><td colspan="2"><strong>Total</strong></td><td style="text-align:right"><strong>${money(order.total)}</strong></td></tr>
+    </table>`;
 }
 
-export function orderConfirmationTemplate(order, user) {
+function shippingBlock(order) {
+  const d = order.shippingData || {};
   return `
-  <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-    <h2 style="color:#8a5a2b">¡Gracias por tu compra, ${user.name}!</h2>
-    <p>Tu pedido <strong>#${order.id}</strong> fue confirmado.</p>
-    <p><strong>Total:</strong> $${order.total.toLocaleString('es-AR')}</p>
-    <p>Te avisaremos por este medio cuando tu pedido sea despachado, junto con el código de seguimiento.</p>
-    <p style="color:#888;font-size:12px">Luzca · Iluminación y diseño para tu casa</p>
+    <p style="margin:4px 0"><strong>Recibe:</strong> ${esc(d.recipient || order.user?.name)} — DNI ${esc(d.dni || '-')}</p>
+    <p style="margin:4px 0"><strong>Teléfono:</strong> ${esc(d.phone || order.user?.phone || '-')}</p>
+    <p style="margin:4px 0"><strong>Dirección:</strong> ${esc(order.shippingAddr)}</p>
+    ${d.notes ? `<p style="margin:4px 0"><strong>Referencias:</strong> ${esc(d.notes)}</p>` : ''}
+    ${d.eta ? `<p style="margin:4px 0"><strong>Entrega estimada:</strong> ${esc(d.eta)} desde el despacho</p>` : ''}`;
+}
+
+const wrap = (inner) => `
+  <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#2b2118">
+    <h1 style="font-family:Georgia,serif;color:#8a5a2b;margin-bottom:4px">Luzca</h1>
+    ${inner}
+    <p style="color:#888;font-size:12px;margin-top:32px">Luzca · Iluminación y diseño para tu casa · luzca.com.ar</p>
   </div>`;
+
+// Mail al comprador cuando el pago se aprueba
+export function orderConfirmationTemplate(order, user) {
+  return wrap(`
+    <h2>¡Gracias por tu compra, ${esc(user.firstName || user.name)}!</h2>
+    <p>Recibimos el pago de tu pedido <strong>#${order.id.slice(-8).toUpperCase()}</strong>. Ya lo estamos preparando.</p>
+    <h3 style="margin-top:24px">Detalle</h3>
+    ${itemsTable(order)}
+    <h3 style="margin-top:24px">Envío</h3>
+    ${shippingBlock(order)}
+    <p style="margin-top:24px">Te vamos a avisar por mail cuando lo despachemos, con el código de seguimiento.
+    Podés ver el estado en <a href="https://luzca.com.ar/panel">Mi cuenta</a>.</p>
+    <p>¿Alguna duda? Respondé este mail o escribinos desde <a href="https://luzca.com.ar/contacto">luzca.com.ar/contacto</a>.</p>`);
+}
+
+// Aviso al dueño de la tienda: todo lo necesario para preparar y despachar
+export function newSaleTemplate(order) {
+  const u = order.user || {};
+  return wrap(`
+    <h2>Nueva venta — ${money(order.total)}</h2>
+    <p><strong>Pedido:</strong> #${order.id.slice(-8).toUpperCase()} <span style="color:#888">(${order.id})</span><br>
+       <strong>Pago Mercado Pago:</strong> ${esc(order.paymentId || '-')}</p>
+    <h3>Cliente</h3>
+    <p style="margin:4px 0">${esc(u.name)} — ${esc(u.email)}</p>
+    <h3>Despachar a</h3>
+    ${shippingBlock(order)}
+    <h3>Productos</h3>
+    ${itemsTable(order)}
+    <p style="margin-top:24px"><strong>Próximo paso:</strong> preparar el paquete, despacharlo y cargar el código de seguimiento.</p>`);
 }
 
 export function shippingUpdateTemplate(order) {

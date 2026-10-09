@@ -15,6 +15,7 @@ import ordersRoutes from './routes/orders.routes.js';
 import paymentsRoutes from './routes/payments.routes.js';
 import contactRoutes from './routes/contact.routes.js';
 import usersRoutes from './routes/users.routes.js';
+import shippingRoutes from './routes/shipping.routes.js';
 
 // Importar manejadores de errores
 import { notFound, errorHandler } from './middleware/errorHandler.js';
@@ -53,6 +54,7 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/shipping', shippingRoutes);
 
 // ====== ERROR HANDLING ======
 app.use(notFound);

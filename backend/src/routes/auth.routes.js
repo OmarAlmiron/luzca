@@ -4,14 +4,16 @@ import { z } from 'zod';
 import prisma from '../config/db.js';
 import { signToken, requireAuth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/security.js';
+import { addressSchema, profileSchema, publicUser } from '../utils/validation.js';
 
 const router = Router();
 
-const registerSchema = z.object({
-  name: z.string().min(2).max(80),
-  email: z.string().email(),
+const registerSchema = profileSchema.extend({
+  email: z.string().trim().toLowerCase().email('Email inválido'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
-  phone: z.string().optional(),
+  acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Tenés que aceptar los términos y condiciones' }) }),
+  marketingOptIn: z.boolean().optional(),
+  address: addressSchema,
 });
 
 router.post('/register', authLimiter, async (req, res, next) => {
@@ -21,23 +23,34 @@ router.post('/register', authLimiter, async (req, res, next) => {
     if (existing) return res.status(409).json({ error: 'Ese email ya está registrado' });
 
     const passwordHash = await bcrypt.hash(data.password, 12);
+    const { address, ...p } = data;
     const user = await prisma.user.create({
-      data: { name: data.name, email: data.email, passwordHash, phone: data.phone },
+      data: {
+        name: `${p.firstName} ${p.lastName}`,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        dni: p.dni,
+        phone: p.phone,
+        birthDate: p.birthDate ? new Date(p.birthDate) : null,
+        email: p.email,
+        passwordHash,
+        acceptedTermsAt: new Date(),
+        marketingOptIn: !!p.marketingOptIn,
+        addresses: { create: { ...address, label: address.label || 'Casa', isDefault: true } },
+      },
+      include: { addresses: true },
     });
 
     const token = signToken(user);
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-    res.status(201).json({
-      token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
-    });
+    res.status(201).json({ token, user: publicUser(user, user.addresses[0]) });
   } catch (err) {
     if (err.name === 'ZodError') return res.status(400).json({ error: err.errors[0].message });
     next(err);
   }
 });
 
-const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
+const loginSchema = z.object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1) });
 
 router.post('/login', authLimiter, async (req, res, next) => {
   try {
@@ -50,7 +63,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
 
     const token = signToken(user);
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token, user: publicUser(user) });
   } catch (err) {
     if (err.name === 'ZodError') return res.status(400).json({ error: err.errors[0].message });
     next(err);
@@ -62,9 +75,16 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-router.get('/me', requireAuth, (req, res) => {
-  const { id, name, email, role, phone } = req.user;
-  res.json({ id, name, email, role, phone });
+router.get('/me', requireAuth, async (req, res, next) => {
+  try {
+    const address = await prisma.address.findFirst({
+      where: { userId: req.user.id },
+      orderBy: [{ isDefault: 'desc' }],
+    });
+    res.json(publicUser(req.user, address));
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

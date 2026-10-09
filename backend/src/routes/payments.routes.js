@@ -88,9 +88,19 @@ router.post('/webhook', async (req, res) => {
     if (payment.status === 'approved') {
       // MP manda varias notificaciones por el mismo pago: solo procesamos la primera
       // (updateMany con condición = idempotente, evita mails duplicados)
-      const { count } = await prisma.order.updateMany({
-        where: { id: orderId, status: 'pending' },
-        data: { status: 'paid', paymentId: String(paymentId) },
+      const count = await prisma.$transaction(async (tx) => {
+        const r = await tx.order.updateMany({
+          where: { id: orderId, status: 'pending' },
+          data: { status: 'paid', paymentId: String(paymentId) },
+        });
+        if (r.count === 1) {
+          // Descontar stock de lo vendido
+          const items = await tx.orderItem.findMany({ where: { orderId } });
+          for (const it of items) {
+            await tx.product.update({ where: { id: it.productId }, data: { stock: { decrement: it.quantity } } });
+          }
+        }
+        return r.count;
       });
       if (count === 1) {
         const paid = await prisma.order.findUnique({
@@ -116,9 +126,22 @@ router.post('/webhook', async (req, res) => {
       }
     } else if (CANCEL_STATUSES.includes(payment.status)) {
       // Devolución, cancelación o contracargo => el pedido se cancela
-      await prisma.order.updateMany({
-        where: { id: orderId, status: { in: ['pending', 'paid'] } },
-        data: { status: 'cancelled', paymentId: String(paymentId) },
+      await prisma.$transaction(async (tx) => {
+        // Si estaba pagado, devolvemos el stock
+        const wasPaid = await tx.order.updateMany({
+          where: { id: orderId, status: 'paid' },
+          data: { status: 'cancelled', paymentId: String(paymentId) },
+        });
+        if (wasPaid.count === 1) {
+          const items = await tx.orderItem.findMany({ where: { orderId } });
+          for (const it of items) {
+            await tx.product.update({ where: { id: it.productId }, data: { stock: { increment: it.quantity } } });
+          }
+        }
+        await tx.order.updateMany({
+          where: { id: orderId, status: 'pending' },
+          data: { status: 'cancelled', paymentId: String(paymentId) },
+        });
       });
       console.log(`[MP] Pedido ${orderId} cancelado (pago ${paymentId}: ${payment.status})`);
     }

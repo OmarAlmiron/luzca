@@ -1,5 +1,6 @@
 // Limpia los datos de prueba de la base (pedidos y mensajes de contacto).
-// NO toca productos, categorías ni usuarios.
+// Borra también la cuenta demo del seed (demo@luzca.com.ar).
+// NO toca productos, categorías ni el resto de los usuarios.
 //
 // Uso (desde la carpeta backend, con DATABASE_URL apuntando a la base que querés limpiar):
 //   node prisma/limpiar-pruebas.js            -> solo MUESTRA lo que borraría
@@ -9,6 +10,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const BORRAR = process.argv.includes('--borrar');
+const DEMO_EMAILS = ['demo@luzca.com.ar'];
 
 async function main() {
   const host = (process.env.DATABASE_URL || '').split('@')[1]?.split('/')[0] || '(sin DATABASE_URL)';
@@ -26,17 +28,19 @@ async function main() {
     console.log(`  ${o.createdAt.toISOString().slice(0, 16)}  ${o.status.padEnd(9)} $${o.total}  ${o.user.email}  ${o.id}`);
   }
   console.log(`\nMensajes de contacto: ${msgs}`);
-  console.log(`\nUsuarios (NO se borran): ${users.map((u) => `${u.email} [${u.role}]`).join(', ')}`);
+  console.log(`\nUsuarios demo a borrar: ${DEMO_EMAILS.join(', ')}`);
+  console.log(`Usuarios que quedan: ${users.filter((u) => !DEMO_EMAILS.includes(u.email)).map((u) => `${u.email} [${u.role}]`).join(', ')}`);
 
   if (!BORRAR) {
-    console.log('\nModo vista previa. Para borrar pedidos y mensajes corré con --borrar');
+    console.log('\nModo vista previa. Para borrar pedidos, mensajes y la cuenta demo corré con --borrar');
     return;
   }
 
   const items = await prisma.orderItem.deleteMany({});
   const ords = await prisma.order.deleteMany({});
   const cm = await prisma.contactMessage.deleteMany({});
-  console.log(`\nBorrados: ${ords.count} pedidos, ${items.count} items, ${cm.count} mensajes.`);
+  const demo = await prisma.user.deleteMany({ where: { email: { in: DEMO_EMAILS } } });
+  console.log(`\nBorrados: ${ords.count} pedidos, ${items.count} items, ${cm.count} mensajes, ${demo.count} usuario(s) demo.`);
 }
 
 main()

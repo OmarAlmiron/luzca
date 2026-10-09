@@ -10,9 +10,15 @@ datasource db {
 model User {
   id            String   @id @default(cuid())
   name          String
+  firstName     String?
+  lastName      String?
+  dni           String?
   email         String   @unique
   passwordHash  String
   phone         String?
+  birthDate     DateTime?
+  acceptedTermsAt DateTime?
+  marketingOptIn  Boolean  @default(false)
   role          String   @default("customer") // customer | admin
   addresses     Address[]
   orders        Order[]
@@ -26,6 +32,9 @@ model Address {
   userId    String
   label     String   @default("Casa")
   street    String
+  number    String?
+  apartment String?  // piso / depto
+  notes     String?  // entre calles, referencias
   city      String
   province  String
   zip       String
@@ -72,6 +81,7 @@ model Order {
   paymentId     String?
   paymentMethod String      @default("mercadopago")
   shippingAddr  String
+  shippingData  Json?       // snapshot del destinatario y dirección al momento de la compra
   trackingCode  String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
