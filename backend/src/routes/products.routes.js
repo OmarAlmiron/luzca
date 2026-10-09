@@ -3,14 +3,17 @@ import prisma from '../config/db.js';
 
 const router = Router();
 
+// No exponemos rating/reviewsCount: eran datos de ejemplo del seed, no reseñas reales
+const toPublic = ({ rating, reviewsCount, ...p }) => ({ ...p, images: JSON.parse(p.images) });
+
 // GET /api/products?category=&search=&featured=&sort=&page=&limit=
 router.get('/', async (req, res, next) => {
   try {
     const { category, search, featured, sort, page = 1, limit = 12 } = req.query;
-    const where = {};
+    const where = { active: true };
     if (category) where.category = { slug: category };
     if (featured) where.featured = featured === 'true';
-    if (search) where.name = { contains: search };
+    if (search) where.name = { contains: String(search), mode: 'insensitive' };
 
     const orderBy =
       sort === 'price-asc' ? { price: 'asc' } :
@@ -26,7 +29,7 @@ router.get('/', async (req, res, next) => {
     ]);
 
     res.json({
-      items: items.map((p) => ({ ...p, images: JSON.parse(p.images) })),
+      items: items.map(toPublic),
       total,
       page: Number(page),
       totalPages: Math.ceil(total / take),
@@ -38,7 +41,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/categories', async (req, res, next) => {
   try {
-    const categories = await prisma.category.findMany({ include: { _count: { select: { products: true } } } });
+    const categories = await prisma.category.findMany({ include: { _count: { select: { products: { where: { active: true } } } } } });
     res.json(categories);
   } catch (err) {
     next(err);
@@ -51,8 +54,8 @@ router.get('/:slug', async (req, res, next) => {
       where: { slug: req.params.slug },
       include: { category: true },
     });
-    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
-    res.json({ ...product, images: JSON.parse(product.images) });
+    if (!product || !product.active) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.json(toPublic(product));
   } catch (err) {
     next(err);
   }

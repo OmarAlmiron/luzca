@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import api from '../api/client';
 
 const AuthContext = createContext(null);
@@ -29,6 +29,17 @@ export function AuthProvider({ children }) {
     return data.user;
   }
 
+  // Vuelve a pedir los datos del usuario (después de editar perfil, verificar email, etc.)
+  const refreshUser = useCallback(async () => {
+    try {
+      const r = await api.get('/auth/me');
+      setUser(r.data);
+      return r.data;
+    } catch {
+      return null;
+    }
+  }, []);
+
   function logout() {
     localStorage.removeItem('luzca_token');
     setUser(null);
@@ -36,7 +47,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

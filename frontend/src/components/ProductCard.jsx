@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Star, ShoppingBag } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 
@@ -17,9 +17,6 @@ export default function ProductCard({ product }) {
       </Link>
       <div className="mt-3">
         <Link to={`/producto/${product.slug}`} className="font-medium hover:text-clay">{product.name}</Link>
-        <div className="flex items-center gap-1 text-xs text-espresso/60 mt-1">
-          <Star size={12} className="fill-gold text-gold" /> {product.rating} ({product.reviewsCount})
-        </div>
         <div className="flex items-center justify-between mt-2">
           <div>
             <span className="font-semibold">${product.price.toLocaleString('es-AR')}</span>

@@ -26,7 +26,7 @@ export default function Login() {
   return (
     <div className="container-x py-20 max-w-md mx-auto">
       <h1 className="font-display text-3xl mb-2">Iniciar sesión</h1>
-      <p className="text-espresso/60 mb-8">Demo: demo@luzca.com.ar / Demo1234!</p>
+      <div className="mb-8" />
       <form onSubmit={handleSubmit} className="space-y-4">
         <input required type="email" placeholder="Email" className="w-full border border-sand rounded-xl px-4 py-3"
           value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
@@ -34,6 +34,7 @@ export default function Login() {
           value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <button disabled={loading} className="btn-primary w-full disabled:opacity-50">{loading ? 'Ingresando...' : 'Ingresar'}</button>
       </form>
+      <p className="text-sm mt-4"><Link to="/recuperar-clave" className="text-clay underline">¿Olvidaste tu contraseña?</Link></p>
       <p className="text-sm text-espresso/60 mt-6">¿No tenés cuenta? <Link to="/registro" className="text-clay underline">Registrate</Link></p>
     </div>
   );

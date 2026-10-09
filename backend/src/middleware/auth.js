@@ -9,7 +9,9 @@ export async function requireAuth(req, res, next) {
 
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user) return res.status(401).json({ error: 'No autenticado' });
+    if (!user || ['demo@luzca.com.ar', 'admin@luzca.com.ar'].includes(user.email)) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
 
     req.user = user;
     next();

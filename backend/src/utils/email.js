@@ -114,12 +114,70 @@ export function newSaleTemplate(order) {
     <p style="margin-top:24px"><strong>Próximo paso:</strong> preparar el paquete, despacharlo y cargar el código de seguimiento.</p>`);
 }
 
+export const siteUrl = () => (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim();
+
 export function shippingUpdateTemplate(order) {
-  return `
-  <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-    <h2 style="color:#8a5a2b">Tu pedido está en camino 🚚</h2>
-    <p>Pedido <strong>#${order.id}</strong> — código de seguimiento: <strong>${order.trackingCode || 'N/A'}</strong></p>
-  </div>`;
+  const link = order.trackingUrl || null;
+  return wrap(`
+    <h2>Tu pedido está en camino 🚚</h2>
+    <p>Despachamos tu pedido <strong>#${order.id.slice(-8).toUpperCase()}</strong>.</p>
+    <p style="margin:4px 0"><strong>Correo:</strong> ${esc(order.carrier || '-')}</p>
+    <p style="margin:4px 0"><strong>Código de seguimiento:</strong> ${esc(order.trackingCode || '-')}</p>
+    ${link ? `<p><a href="${esc(link)}">Seguir mi envío</a></p>` : `<p style="color:#888">Podés seguirlo con ese código en la web de ${esc(order.carrier || 'el correo')}.</p>`}
+    <p style="margin:4px 0"><strong>Dirección:</strong> ${esc(order.shippingAddr)}</p>
+    ${order.shippingData?.eta ? `<p style="margin:4px 0"><strong>Entrega estimada:</strong> ${esc(order.shippingData.eta)}</p>` : ''}
+    <p style="margin-top:24px">Podés ver el estado en <a href="${siteUrl()}/panel">Mi cuenta</a>.</p>`);
+}
+
+export function orderDeliveredTemplate(order) {
+  return wrap(`
+    <h2>¡Tu pedido fue entregado!</h2>
+    <p>Esperamos que disfrutes tu compra (pedido <strong>#${order.id.slice(-8).toUpperCase()}</strong>).</p>
+    <p>Si algo no está bien, escribinos desde <a href="${siteUrl()}/contacto">luzca.com.ar/contacto</a>.</p>`);
+}
+
+export function verifyEmailTemplate(user, token) {
+  const url = `${siteUrl()}/verificar-email?token=${token}`;
+  return wrap(`
+    <h2>Confirmá tu email, ${esc(user.firstName || user.name)}</h2>
+    <p>Para terminar de activar tu cuenta en Luzca, confirmá tu dirección de correo:</p>
+    <p><a href="${url}" style="background:#8a5a2b;color:#fff;padding:12px 20px;border-radius:24px;text-decoration:none">Confirmar email</a></p>
+    <p style="color:#888;font-size:12px">Si no creaste una cuenta, ignorá este mensaje.</p>`);
+}
+
+export function resetPasswordTemplate(user, token) {
+  const url = `${siteUrl()}/restablecer-clave?token=${token}`;
+  return wrap(`
+    <h2>Restablecer tu contraseña</h2>
+    <p>Hola ${esc(user.firstName || user.name)}, recibimos un pedido para cambiar tu contraseña.</p>
+    <p><a href="${url}" style="background:#8a5a2b;color:#fff;padding:12px 20px;border-radius:24px;text-decoration:none">Elegir nueva contraseña</a></p>
+    <p>El link vence en 1 hora. Si no fuiste vos, ignorá este mail: tu contraseña no cambia.</p>`);
+}
+
+export function withdrawalAckTemplate(w) {
+  return wrap(`
+    <h2>Recibimos tu solicitud de arrepentimiento</h2>
+    <p>Hola ${esc(w.name)}, registramos tu pedido de revocación de compra.</p>
+    <p><strong>Código de trámite:</strong> <span style="font-size:18px">${esc(w.code)}</span></p>
+    ${w.orderRef ? `<p><strong>Pedido:</strong> ${esc(w.orderRef)}</p>` : ''}
+    <p>Te vamos a contactar dentro de las próximas 24 horas hábiles con los pasos para la devolución del producto y el reintegro.
+    Los costos de devolución corren por nuestra cuenta.</p>`);
+}
+
+export function withdrawalAdminTemplate(w) {
+  return wrap(`
+    <h2>Nueva solicitud de arrepentimiento — ${esc(w.code)}</h2>
+    <p>${esc(w.name)} (${esc(w.email)}) · DNI ${esc(w.dni || '-')}</p>
+    <p><strong>Pedido:</strong> ${esc(w.orderRef || '-')}</p>
+    <p><strong>Motivo:</strong> ${esc(w.reason || '-')}</p>
+    <p>Hay que responderle dentro de las 24 hs. Gestionala desde el panel de admin.</p>`);
+}
+
+export function contactAdminTemplate(d) {
+  return wrap(`
+    <h2>Nueva consulta: ${esc(d.subject)}</h2>
+    <p>${esc(d.name)} (${esc(d.email)})</p>
+    <p style="white-space:pre-wrap">${esc(d.message)}</p>`);
 }
 
 export function contactAckTemplate(name) {

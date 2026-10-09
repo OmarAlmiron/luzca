@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/sitemap.xml", "destination": "https://api.luzca.com.ar/sitemap.xml" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

@@ -65,15 +65,10 @@ async function main() {
     });
   }
 
-  const passwordHash = await bcrypt.hash('Demo1234!', 12);
-  await prisma.user.create({
-    data: { name: 'Admin Luzca', email: 'admin@luzca.com.ar', passwordHash, role: 'admin' },
-  });
-  await prisma.user.create({
-    data: { name: 'Cliente Demo', email: 'demo@luzca.com.ar', passwordHash, role: 'customer' },
-  });
+  // Ya no se crean usuarios demo (tenían una contraseña pública).
+  // Para tener un admin: registrate en la web y corré `node prisma/hacer-admin.js tu@email.com`
 
-  console.log('✅ Seed completo: categorías, productos y usuarios demo creados.');
+  console.log('✅ Seed completo: categorías y productos creados.');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { ShoppingBag, User, Menu, X, Search } from 'lucide-react';
+import { ShoppingBag, User, Menu, X, Search, Shield } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,6 +32,7 @@ export default function Navbar() {
 
         <div className="flex items-center gap-4">
           <Link to="/catalogo" aria-label="Buscar" className="hidden md:block hover:text-clay"><Search size={20} /></Link>
+          {user?.role === 'admin' && <Link to="/admin" aria-label="Administración" title="Administración" className="hover:text-clay"><Shield size={20} /></Link>}
           <Link to={user ? '/panel' : '/login'} aria-label="Cuenta" className="hover:text-clay"><User size={20} /></Link>
           <Link to="/carrito" aria-label="Carrito" className="relative hover:text-clay">
             <ShoppingBag size={20} />

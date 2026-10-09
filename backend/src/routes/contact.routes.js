@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../config/db.js';
-import { sendMail, contactAckTemplate } from '../utils/email.js';
+import { sendMail, contactAckTemplate, contactAdminTemplate } from '../utils/email.js';
 
 const router = Router();
 
@@ -17,12 +17,14 @@ router.post('/', async (req, res, next) => {
     const data = contactSchema.parse(req.body);
     const msg = await prisma.contactMessage.create({ data });
 
-    await sendMail({ to: data.email, subject: 'Recibimos tu consulta — Luzca', html: contactAckTemplate(data.name) });
-    await sendMail({
-      to: process.env.SUPPORT_EMAIL || process.env.SMTP_USER,
-      subject: `Nueva consulta: ${data.subject}`,
-      html: `<p>${data.name} (${data.email})</p><p>${data.message}</p>`,
-    });
+    // Si falla el mail, la consulta igual queda guardada (se ve en el panel de admin)
+    sendMail({ to: data.email, subject: 'Recibimos tu consulta — Luzca', html: contactAckTemplate(data.name) })
+      .catch((e) => console.error('Error mail contacto:', e.message));
+    const admin = process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL;
+    if (admin) {
+      sendMail({ to: admin, subject: `Nueva consulta: ${data.subject}`, html: contactAdminTemplate(data) })
+        .catch((e) => console.error('Error mail contacto admin:', e.message));
+    }
 
     res.status(201).json({ ok: true, id: msg.id });
   } catch (err) {

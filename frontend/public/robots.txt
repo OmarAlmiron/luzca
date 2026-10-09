@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /admin
+Disallow: /panel
+Disallow: /checkout
+Disallow: /carrito
+Disallow: /restablecer-clave
+Disallow: /verificar-email
+
+Sitemap: https://luzca.com.ar/sitemap.xml

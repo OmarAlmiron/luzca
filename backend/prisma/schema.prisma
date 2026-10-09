@@ -19,6 +19,10 @@ model User {
   birthDate     DateTime?
   acceptedTermsAt DateTime?
   marketingOptIn  Boolean  @default(false)
+  emailVerifiedAt      DateTime?
+  emailVerifyTokenHash String?
+  resetTokenHash       String?
+  resetTokenExpires    DateTime?
   role          String   @default("customer") // customer | admin
   addresses     Address[]
   orders        Order[]
@@ -59,6 +63,7 @@ model Product {
   price       Float
   compareAt   Float?
   stock       Int         @default(0)
+  active      Boolean     @default(true)
   images      String      // JSON stringified array of image URLs
   featured    Boolean     @default(false)
   category    Category    @relation(fields: [categoryId], references: [id])
@@ -67,6 +72,7 @@ model Product {
   reviewsCount Int        @default(0)
   orderItems  OrderItem[]
   createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now()) @updatedAt
 }
 
 model Order {
@@ -83,6 +89,10 @@ model Order {
   shippingAddr  String
   shippingData  Json?       // snapshot del destinatario y dirección al momento de la compra
   trackingCode  String?
+  carrier       String?
+  trackingUrl   String?
+  shippedAt     DateTime?
+  adminNotes    String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -105,4 +115,18 @@ model ContactMessage {
   message   String
   status    String   @default("open") // open | answered
   createdAt DateTime @default(now())
+}
+
+// Botón de arrepentimiento (Res. 424/2020): cada solicitud recibe un código
+model WithdrawalRequest {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  email     String
+  dni       String?
+  orderRef  String?
+  reason    String?
+  status    String   @default("open") // open | done | rejected
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

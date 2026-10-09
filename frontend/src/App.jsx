@@ -4,6 +4,9 @@ import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
+import WhatsAppButton from './components/WhatsAppButton';
+import Analytics from './components/Analytics';
 import ComingSoon from './pages/ComingSoon';
 
 import Home from './pages/Home';
@@ -17,6 +20,16 @@ import Dashboard from './pages/Dashboard';
 import Contact from './pages/Contact';
 import About from './pages/About';
 import NotFound from './pages/NotFound';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
+import Admin from './pages/admin/Admin';
+import Terminos from './pages/legal/Terminos';
+import Privacidad from './pages/legal/Privacidad';
+import Envios from './pages/legal/Envios';
+import FAQ from './pages/legal/FAQ';
+import Cambios from './pages/legal/Cambios';
+import Arrepentimiento from './pages/legal/Arrepentimiento';
 
 // Modo "en construccion": se activa con la variable de entorno VITE_MAINTENANCE_MODE=true.
 // Para seguir probando el sitio vos mismo mientras esta activado, entra una vez a
@@ -49,6 +62,7 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen">
       <Toaster position="top-center" />
+      <Analytics />
       <Navbar />
       <main className="flex-1">
         <Routes>
@@ -63,10 +77,21 @@ export default function App() {
           <Route path="/panel" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/contacto" element={<Contact />} />
           <Route path="/sobre-nosotros" element={<About />} />
+          <Route path="/recuperar-clave" element={<ForgotPassword />} />
+          <Route path="/restablecer-clave" element={<ResetPassword />} />
+          <Route path="/verificar-email" element={<VerifyEmail />} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+          <Route path="/terminos" element={<Terminos />} />
+          <Route path="/politica-privacidad" element={<Privacidad />} />
+          <Route path="/envios" element={<Envios />} />
+          <Route path="/preguntas-frecuentes" element={<FAQ />} />
+          <Route path="/cambios-y-devoluciones" element={<Cambios />} />
+          <Route path="/arrepentimiento" element={<Arrepentimiento />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 }

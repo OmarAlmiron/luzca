@@ -1,5 +1,5 @@
 // Limpia los datos de prueba de la base (pedidos y mensajes de contacto).
-// Borra también la cuenta demo del seed (demo@luzca.com.ar).
+// Borra también las cuentas del seed (demo@ y admin@luzca.com.ar), que tienen contraseña pública.
 // NO toca productos, categorías ni el resto de los usuarios.
 //
 // Uso (desde la carpeta backend, con DATABASE_URL apuntando a la base que querés limpiar):
@@ -10,7 +10,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const BORRAR = process.argv.includes('--borrar');
-const DEMO_EMAILS = ['demo@luzca.com.ar'];
+// Cuentas creadas por el seed con contraseña pública (Demo1234!): se borran siempre
+const DEMO_EMAILS = ['demo@luzca.com.ar', 'admin@luzca.com.ar'];
 
 async function main() {
   const host = (process.env.DATABASE_URL || '').split('@')[1]?.split('/')[0] || '(sin DATABASE_URL)';

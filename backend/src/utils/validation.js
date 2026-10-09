@@ -35,6 +35,7 @@ export function publicUser(user, address) {
     email: user.email,
     phone: user.phone,
     role: user.role,
+    emailVerified: !!user.emailVerifiedAt,
     address: address || null,
   };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw } from 'lucide-react';
+import usePageMeta from '../hooks/usePageMeta';
 import toast from 'react-hot-toast';
 import api from '../api/client';
 import { useCart } from '../context/CartContext';
@@ -15,6 +16,8 @@ export default function Product() {
   useEffect(() => {
     api.get(`/products/${slug}`).then((r) => setProduct(r.data)).catch(() => setProduct(null));
   }, [slug]);
+
+  usePageMeta(product?.name, product?.description?.slice(0, 155));
 
   if (!product) return <div className="container-x py-24 text-center">Cargando producto...</div>;
 
@@ -36,9 +39,6 @@ export default function Product() {
       <div>
         <Link to={`/catalogo?category=${product.category.slug}`} className="text-xs uppercase tracking-widest text-clay">{product.category.name}</Link>
         <h1 className="font-display text-4xl mt-2 mb-3">{product.name}</h1>
-        <div className="flex items-center gap-2 text-sm text-espresso/60 mb-4">
-          <Star size={14} className="fill-gold text-gold" /> {product.rating} · {product.reviewsCount} reseñas
-        </div>
         <div className="flex items-baseline gap-3 mb-6">
           <span className="text-3xl font-semibold">${product.price.toLocaleString('es-AR')}</span>
           {product.compareAt && <span className="line-through text-espresso/40">${product.compareAt.toLocaleString('es-AR')}</span>}
