@@ -113,6 +113,12 @@ router.get('/shipping-check', async (req, res) => {
     accountId: process.env.ZIPNOVA_ACCOUNT_ID ? 'cargado' : 'FALTA',
     originId: process.env.ZIPNOVA_ORIGIN_ID ? 'cargado' : 'no (usa el origen por defecto)',
     autoCreate: process.env.ZIPNOVA_AUTO_CREATE === 'true',
+    // Para saber en qué servicio/entorno de Railway corre esto (solo nombres, nunca valores)
+    railwayService: process.env.RAILWAY_SERVICE_NAME || null,
+    railwayEnvironment: process.env.RAILWAY_ENVIRONMENT_NAME || null,
+    railwayProject: process.env.RAILWAY_PROJECT_NAME || null,
+    commit: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || null,
+    shippingVarNames: Object.keys(process.env).filter((k) => /ZIP|SHIPPING/i.test(k)),
   };
   if (!zipnovaEnabled()) return res.json({ config, test: 'sin credenciales de Zipnova' });
   try {
