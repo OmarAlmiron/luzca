@@ -63,6 +63,11 @@ model Product {
   price       Float
   compareAt   Float?
   stock       Int         @default(0)
+  // Para cotizar envíos con los correos (peso en gramos, medidas de la caja en cm)
+  weightGrams Int         @default(1500)
+  lengthCm    Int         @default(30)
+  widthCm     Int         @default(30)
+  heightCm    Int         @default(30)
   active      Boolean     @default(true)
   images      String      // JSON stringified array of image URLs
   featured    Boolean     @default(false)

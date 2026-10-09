@@ -35,7 +35,8 @@ export default function Checkout() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [address, setAddress] = useState(EMPTY_ADDRESS);
-  const [quote, setQuote] = useState(null);
+  const [quote, setQuote] = useState(null); // { options, freeFrom, free }
+  const [optionId, setOptionId] = useState('');
   const [quoteError, setQuoteError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -48,15 +49,26 @@ export default function Checkout() {
   }, [user]);
 
   // Cotizar el envío cuando cambian provincia / CP / carrito
+  const cartKey = items.map((i) => `${i.id}:${i.quantity}`).join(',');
   useEffect(() => {
-    if (!address.province || address.zip.trim().length < 4) { setQuote(null); setQuoteError(''); return; }
+    if (!items.length || !address.province || address.zip.trim().length < 4) { setQuote(null); setQuoteError(''); return; }
     const t = setTimeout(() => {
-      api.post('/shipping/quote', { province: address.province, zip: address.zip.trim(), subtotal })
-        .then((r) => { setQuote(r.data); setQuoteError(''); })
+      api.post('/shipping/quote', {
+        province: address.province,
+        zip: address.zip.trim(),
+        items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+      })
+        .then((r) => {
+          setQuote(r.data);
+          setQuoteError('');
+          setOptionId((prev) => (r.data.options.some((o) => o.id === prev) ? prev : r.data.options[0]?.id || ''));
+        })
         .catch((err) => { setQuote(null); setQuoteError(err.response?.data?.error || 'No pudimos cotizar el envío'); });
     }, 400);
     return () => clearTimeout(t);
-  }, [address.province, address.zip, subtotal]);
+  }, [address.province, address.zip, cartKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selected = quote?.options.find((o) => o.id === optionId) || null;
 
   if (status) return <CheckoutResult status={status} />;
 
@@ -72,7 +84,7 @@ export default function Checkout() {
   async function handlePay(e) {
     e.preventDefault();
     if (!user) { toast.error('Iniciá sesión para continuar'); navigate('/login'); return; }
-    if (!quote) { toast.error(quoteError || 'Completá la dirección para calcular el envío'); return; }
+    if (!selected) { toast.error(quoteError || 'Completá la dirección para calcular el envío'); return; }
     setLoading(true);
     try {
       const { label, id, userId, isDefault, country, lat, lng, ...addr } = address;
@@ -80,6 +92,7 @@ export default function Checkout() {
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
         address: addr,
         saveAddress: true,
+        shippingOptionId: selected.id,
       });
       const { data: pref } = await api.post(`/payments/create-preference/${order.id}`);
       clearCart();
@@ -91,7 +104,7 @@ export default function Checkout() {
     }
   }
 
-  const shipping = quote?.cost ?? null;
+  const shipping = selected ? selected.cost : null;
 
   return (
     <div className="container-x py-12 grid md:grid-cols-3 gap-10">
@@ -106,9 +119,20 @@ export default function Checkout() {
 
         {quoteError && <p className="text-sm text-red-700">{quoteError}</p>}
         {quote && (
-          <div className="border border-sand rounded-xl p-4 text-sm flex justify-between">
-            <span>{quote.carrier} · {quote.zoneLabel}<br /><span className="text-espresso/60">Llega en {quote.eta}</span></span>
-            <strong>{quote.cost === 0 ? 'Gratis' : money(quote.cost)}</strong>
+          <div className="space-y-2">
+            <h2 className="font-display text-xl">Forma de envío</h2>
+            {quote.options.map((o) => (
+              <label key={o.id} className={`border rounded-xl p-4 text-sm flex justify-between items-center gap-3 cursor-pointer ${optionId === o.id ? 'border-clay bg-sand/30' : 'border-sand'}`}>
+                <span className="flex items-start gap-3">
+                  <input type="radio" name="shipping" className="mt-1" checked={optionId === o.id} onChange={() => setOptionId(o.id)} />
+                  <span>
+                    <strong>{o.service}</strong> · {o.carrier}{o.zoneLabel ? ` · ${o.zoneLabel}` : ''}
+                    <br /><span className="text-espresso/60">{o.deliveryType === 'S' ? 'Retirás en sucursal' : 'Llega a tu casa'} en {o.eta}</span>
+                  </span>
+                </span>
+                <strong>{o.cost === 0 ? 'Gratis' : money(o.cost)}</strong>
+              </label>
+            ))}
           </div>
         )}
 
@@ -116,7 +140,7 @@ export default function Checkout() {
           Vas a ser redirigido a <strong>Mercado Pago</strong> para completar el pago de forma segura (tarjeta, débito, transferencia o dinero en cuenta).
         </div>
 
-        <button disabled={loading || !quote} className="btn-primary w-full disabled:opacity-50">
+        <button disabled={loading || !selected} className="btn-primary w-full disabled:opacity-50">
           {loading ? 'Procesando...' : 'Pagar con Mercado Pago'}
         </button>
       </form>
@@ -132,7 +156,7 @@ export default function Checkout() {
           <span>Envío</span>
           <span>{shipping === null ? 'Ingresá tu dirección' : shipping === 0 ? 'Gratis' : money(shipping)}</span>
         </div>
-        {quote && !quote.free && subtotal < quote.freeFrom && (
+        {quote && !quote.free && (
           <p className="text-xs text-espresso/60 mt-1">Envío gratis desde {money(quote.freeFrom)}</p>
         )}
         <div className="flex justify-between font-semibold text-lg mt-2">

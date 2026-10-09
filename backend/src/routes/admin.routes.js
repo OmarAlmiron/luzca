@@ -118,6 +118,10 @@ const productUpdateSchema = z.object({
   featured: z.boolean().optional(),
   active: z.boolean().optional(),
   description: z.string().max(5000).optional(),
+  weightGrams: z.number().int().min(1).max(50000).optional(),
+  lengthCm: z.number().int().min(1).max(200).optional(),
+  widthCm: z.number().int().min(1).max(200).optional(),
+  heightCm: z.number().int().min(1).max(200).optional(),
 });
 
 router.patch('/products/:id', async (req, res, next) => {

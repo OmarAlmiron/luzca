@@ -134,14 +134,16 @@ function Orders() {
 }
 
 function ProductRow({ p, onSaved }) {
-  const [f, setF] = useState({ price: p.price, compareAt: p.compareAt ?? '', stock: p.stock, featured: p.featured, active: p.active });
-  const dirty = f.price !== p.price || String(f.compareAt) !== String(p.compareAt ?? '') || f.stock !== p.stock || f.featured !== p.featured || f.active !== p.active;
+  const [f, setF] = useState({ price: p.price, compareAt: p.compareAt ?? '', stock: p.stock, featured: p.featured, active: p.active, weightGrams: p.weightGrams ?? 1500, lengthCm: p.lengthCm ?? 30, widthCm: p.widthCm ?? 30, heightCm: p.heightCm ?? 30 });
+  const dims = ['weightGrams', 'lengthCm', 'widthCm', 'heightCm'];
+  const dirty = f.price !== p.price || String(f.compareAt) !== String(p.compareAt ?? '') || f.stock !== p.stock || f.featured !== p.featured || f.active !== p.active || dims.some((k) => f[k] !== p[k]);
 
   async function save() {
     try {
       const { data } = await api.patch(`/admin/products/${p.id}`, {
         price: Number(f.price), compareAt: f.compareAt === '' ? null : Number(f.compareAt),
         stock: Number(f.stock), featured: f.featured, active: f.active,
+        weightGrams: Number(f.weightGrams), lengthCm: Number(f.lengthCm), widthCm: Number(f.widthCm), heightCm: Number(f.heightCm),
       });
       toast.success(`${p.name} actualizado`);
       onSaved(data);
@@ -154,6 +156,14 @@ function ProductRow({ p, onSaved }) {
       <td className="pr-2"><input type="number" min="1" className={`${input} w-28`} value={f.price} onChange={(e) => setF({ ...f, price: Number(e.target.value) })} /></td>
       <td className="pr-2"><input type="number" min="0" placeholder="—" className={`${input} w-28`} value={f.compareAt} onChange={(e) => setF({ ...f, compareAt: e.target.value })} /></td>
       <td className="pr-2"><input type="number" min="0" className={`${input} w-20 ${f.stock <= 3 ? 'border-red-400' : ''}`} value={f.stock} onChange={(e) => setF({ ...f, stock: Number(e.target.value) })} /></td>
+      <td className="pr-2 whitespace-nowrap">
+        <input type="number" min="1" title="Peso en gramos" className={`${input} w-20`} value={f.weightGrams} onChange={(e) => setF({ ...f, weightGrams: Number(e.target.value) })} />
+        <span className="block text-[11px] text-espresso/50 mt-1">
+          <input type="number" min="1" title="Largo cm" className="w-10 border border-sand rounded px-1" value={f.lengthCm} onChange={(e) => setF({ ...f, lengthCm: Number(e.target.value) })} />×
+          <input type="number" min="1" title="Ancho cm" className="w-10 border border-sand rounded px-1" value={f.widthCm} onChange={(e) => setF({ ...f, widthCm: Number(e.target.value) })} />×
+          <input type="number" min="1" title="Alto cm" className="w-10 border border-sand rounded px-1" value={f.heightCm} onChange={(e) => setF({ ...f, heightCm: Number(e.target.value) })} /> cm
+        </span>
+      </td>
       <td className="text-center"><input type="checkbox" checked={f.featured} onChange={(e) => setF({ ...f, featured: e.target.checked })} /></td>
       <td className="text-center"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /></td>
       <td><button disabled={!dirty} onClick={save} className="text-sm underline disabled:opacity-30">Guardar</button></td>
@@ -169,7 +179,7 @@ function Products() {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="text-left text-espresso/60">
-          <tr><th className="py-2">Producto</th><th>Precio</th><th>Precio anterior (oferta)</th><th>Stock</th><th>Destacado</th><th>Visible</th><th /></tr>
+          <tr><th className="py-2">Producto</th><th>Precio</th><th>Precio anterior (oferta)</th><th>Stock</th><th>Peso (g) y caja</th><th>Destacado</th><th>Visible</th><th /></tr>
         </thead>
         <tbody>
           {list.map((p) => <ProductRow key={p.id} p={p} onSaved={(n) => setList(list.map((x) => (x.id === n.id ? n : x)))} />)}

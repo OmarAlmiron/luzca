@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
-import { quoteShipping } from '../utils/shipping.js';
+import { getShippingOptions } from '../utils/shipping.js';
+import { loadCartItems } from './shipping.routes.js';
 import { addressSchema, formatAddress } from '../utils/validation.js';
 
 const router = Router();
@@ -11,6 +12,7 @@ const orderSchema = z.object({
   items: z.array(z.object({ productId: z.string(), quantity: z.number().int().positive() })).min(1),
   address: addressSchema,
   saveAddress: z.boolean().optional(),
+  shippingOptionId: z.string().max(80).optional(),
 });
 
 router.get('/my', requireAuth, async (req, res, next) => {
@@ -29,24 +31,21 @@ router.get('/my', requireAuth, async (req, res, next) => {
 router.post('/', requireAuth, async (req, res, next) => {
   try {
     const data = orderSchema.parse(req.body);
-    const products = await prisma.product.findMany({
-      where: { id: { in: data.items.map((i) => i.productId) } },
-    });
+    const cart = await loadCartItems(data.items);
 
     let subtotal = 0;
-    const itemsData = data.items.map((it) => {
-      const product = products.find((p) => p.id === it.productId);
-      if (!product) throw Object.assign(new Error('Producto inválido en el carrito'), { status: 400 });
-      if (product.stock < it.quantity) {
+    const itemsData = cart.map(({ quantity, product }) => {
+      if (product.stock < quantity) {
         throw Object.assign(new Error(`No hay stock suficiente de "${product.name}" (quedan ${product.stock})`), { status: 400 });
       }
-      subtotal += product.price * it.quantity;
-      return { productId: product.id, quantity: it.quantity, price: product.price };
+      subtotal += product.price * quantity;
+      return { productId: product.id, quantity, price: product.price };
     });
 
-    // El costo de envío SIEMPRE se calcula en el servidor (no se confía en el front)
-    const quote = quoteShipping({ province: data.address.province, zip: data.address.zip, subtotal });
-    const shippingCost = quote.cost;
+    // El envío SIEMPRE se recalcula en el servidor; el front solo elige la opción
+    const { options } = await getShippingOptions({ province: data.address.province, zip: data.address.zip, items: cart });
+    const option = options.find((o) => o.id === data.shippingOptionId) || options[0];
+    const shippingCost = option.cost;
     const total = subtotal + shippingCost;
 
     const u = req.user;
@@ -56,8 +55,12 @@ router.post('/', requireAuth, async (req, res, next) => {
       phone: u.phone,
       email: u.email,
       ...data.address,
-      zone: quote.zoneLabel,
-      eta: quote.eta,
+      shippingOptionId: option.id,
+      carrier: option.carrier,
+      service: option.service,
+      deliveryType: option.deliveryType,
+      zone: option.zoneLabel,
+      eta: option.eta,
     };
 
     const order = await prisma.order.create({
