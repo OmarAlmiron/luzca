@@ -1,4 +1,5 @@
 import helmet from 'helmet';
+import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import hpp from 'hpp';
 import xss from 'xss-clean';
@@ -35,28 +36,25 @@ export const authLimiter = rateLimit({
   message: { error: 'Demasiados intentos. Probá de nuevo en 15 minutos.' },
 });
 
-// CORS middleware personalizado - control total sobre headers
-export const corsMiddleware = (req, res, next) => {
-  // Headers CORS
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-  res.header('Access-Control-Max-Age', '86400');
+// CORS: solo los dominios permitidos y con credentials (el front usa cookies + withCredentials).
+// CLIENT_URL acepta varios dominios separados por coma, ej:
+// CLIENT_URL=https://luzca.com.ar,https://www.luzca.com.ar
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim().replace(/\/$/, ''))
+  .filter(Boolean);
 
-  // Headers de caché para evitar que Cloudflare cachee y pierda los headers CORS
-  res.header('Cache-Control', 'public, max-age=0, must-revalidate');
-  res.header('Pragma', 'public');
-
-  // Header de debug para verificar que el middleware se ejecuta
-  res.header('X-CORS-Middleware', 'applied');
-
-  // Responder a preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-
-  next();
-};
+export const corsMiddleware = cors({
+  origin(origin, callback) {
+    // Sin Origin (curl, webhooks de Mercado Pago, health checks) -> permitido
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  maxAge: 86400,
+});
 
 export const hppMiddleware = hpp();
 export const xssMiddleware = xss();
